@@ -1,0 +1,8 @@
+neptune:
+  workspace: imbesat-rizvi
+  project-name: NaN
+  run-name: NaN-numeracy-probing-encoding-without-LM
+  tags:
+    - numeric-encoding
+    - numeracy-probing
+    - without-LM
