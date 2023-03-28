@@ -41,14 +41,10 @@ def func_encoder(
     scale_exp : +ve int or array-like, optional (default=13)
         Exponential values to be used for scaling the encoding.
 
-    exp_step : int, optional (default=1)
-        step value for arange when scale_exp array is to be generated
-        based on its provided int value.
-
     exp_divisor : int, optional (default=1)
         Divisor to be used for dividing the exponent.
         Other schemes can have their respective values
-        e.g. 768 in original sinusoidal embeddings.
+        e.g. 768//2 in original sinusoidal embeddings.
 
     symmetric_exp : bool, optional (default=True)
         If True, extend exp to negative values too, symmetrically.
