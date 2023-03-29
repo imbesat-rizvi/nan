@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 
 
 def arctan_func(x):
@@ -10,7 +11,7 @@ def periodic_func(x):
 
 
 def func_encoder(
-    num,
+    nums,
     func=arctan_func,
     scale_base=10,
     scale_exp=13,
@@ -23,13 +24,13 @@ def func_encoder(
     Returns an encoded array obtained by applying the specified function to a
     scaled array as:
 
-    encoded = func \left( \frac{num}{ scale\_base^{ \frac{scale\_exp}{exp\_divisor} } } \right)
+    encoded = func \left( \frac{nums}{ scale\_base^{ \frac{scale\_exp}{exp\_divisor} } } \right)
 
     with additional choices specified by other parameters.
 
     Parameters:
     -----------
-    num : array-like
+    nums : array-like
         Input array to be encoded.
 
     func : function, optional (default=arctan_func)
@@ -74,8 +75,8 @@ def func_encoder(
 
     scale = np.exp(-exps * log_scale_base / exp_divisor)
 
-    num = np.atleast_1d(num).reshape((-1, 1))
-    encoding = func(num * scale)
+    nums = np.atleast_1d(nums).reshape((-1, 1))
+    encoding = func(nums * scale)
 
     encoding[np.abs(encoding) < tol] = 0
     return encoding
@@ -120,25 +121,27 @@ def sinusoidal_encoder(x, scale_base=10_000, exp_divisor=50):
     return encoding
 
 
-def encode_num(
-    num,
+def encode_nums(
+    nums,
     digit_kwargs=dict(int_decimals=12, frac_decimals=12),
     order_kwargs=dict(scale_exp=13),
     sinusoidal_kwargs=dict(scale_base=10000, exp_divisor=50),
+    to_torch=True,
 ):
 
-    encoding = np.array([])
-    if not isinstance(num, (int, float)):
-        encoding = np.empty(shape=(len(num), 0))
+    num_counts = len(nums) if not isinstance(nums, (int, float)) else 1
+    encoding = np.empty(shape=(num_counts, 0))
 
     if digit_kwargs:
-        encoding = np.hstack((encoding, digit_encoder(num, **digit_kwargs)))
+        encoding = np.hstack((encoding, digit_encoder(nums, **digit_kwargs)))
     if order_kwargs:
-        encoding = np.hstack((encoding, order_encoder(num, **order_kwargs)))
+        encoding = np.hstack((encoding, order_encoder(nums, **order_kwargs)))
     if sinusoidal_kwargs:
-        encoding = np.hstack((encoding, sinusoidal_encoder(num, **sinusoidal_kwargs)))
+        encoding = np.hstack((encoding, sinusoidal_encoder(nums, **sinusoidal_kwargs)))
 
-    return encoding
+    if to_torch:
+        encoding = torch.tensor(encoding, dtype=torch.get_default_dtype())
+    return encoding if num_counts > 1 else encoding[0]
 
 
 def log_func(x):
@@ -146,13 +149,14 @@ def log_func(x):
     return np.log(np.abs(x) + eps)
 
 
-def encode_aux(num, num_encoder=encode_num, log_aux=True):
+def encode_aux(nums, num_encoder=encode_nums, log_aux=True, to_torch=True):
 
-    aux_encoding = np.array([])
-    if not isinstance(num, (int, float)):
-        aux_encoding = np.empty(shape=(len(num), 0))
-
+    num_counts = len(nums) if not isinstance(nums, (int, float)) else 1
+    aux_encoding = np.empty(shape=(num_counts, 0))
     if log_aux:
-        aux_encoding = np.hstack((aux_encoding, num_encoder(log_func(num))))
+        encoding = num_encoder(log_func(nums)).reshape(num_counts, -1)
+        aux_encoding = np.hstack((aux_encoding, encoding))
 
-    return aux_encoding
+    if to_torch:
+        aux_encoding = torch.tensor(aux_encoding, dtype=torch.get_default_dtype())
+    return aux_encoding if num_counts > 1 else aux_encoding[0]

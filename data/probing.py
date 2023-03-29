@@ -1,7 +1,15 @@
 import numpy as np
+from torch.utils.data import DataLoader
 
 
 from .utils import train_val_test_split
+
+
+DATALOADER_KWARGS = dict(
+    batch_size=64,
+    shuffle=False,
+    num_workers=1,
+)
 
 
 def gen_reconstruct_set(
@@ -11,6 +19,7 @@ def gen_reconstruct_set(
     train_size=0.6,
     test_size=0.2,
     random_state=42,
+    dataloader_kwargs=DATALOADER_KWARGS,
 ):
 
     val_size = 1 - train_size - test_size
@@ -27,21 +36,26 @@ def gen_reconstruct_set(
         interp_nums = nums[interp_valid]
         exterp_nums = nums[~interp_valid]
 
-        train_set, val_set, test_set = train_val_test_split(
+        train_data, val_data, test_data = train_val_test_split(
             interp_nums,
             train_size=train_size,
             test_size=test_size,
             random_state=random_state,
         )
 
-        test_set = np.append(test_set, exterp_nums)
+        test_data = np.append(test_data, exterp_nums)
 
     else:
-        train_set, val_set, test_set = train_val_test_split(
+        train_data, val_data, test_data = train_val_test_split(
             nums,
             train_size=train_size,
             test_size=test_size,
             random_state=random_state,
         )
 
-    return train_set, val_set, test_set
+    if dataloader_kwargs:
+        train_data = DataLoader(train_data, **dataloader_kwargs)
+        val_data = DataLoader(val_data, **dataloader_kwargs)
+        test_data = DataLoader(test_data, **dataloader_kwargs)
+
+    return train_data, val_data, test_data
