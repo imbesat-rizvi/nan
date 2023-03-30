@@ -1,8 +1,9 @@
 neptune:
   workspace: imbesat-rizvi
-  project-name: NaN
-  run-name: NaN-numeracy-probing-encoding-without-LM
+  project-name: Reconstruction-Probing-NaN
+  run-name: Only-encoding
   tags:
+    - reconstruction
     - numeric-encoding
     - numeracy-probing
     - without-LM
@@ -31,7 +32,7 @@ exp:
     emb_args:
       use_aux: false
       nums:
-        digit_kwargs:
+        digit_kwargs: 
           int_decimals: 12
           frac_decimals: 12
         order_kwargs: {}

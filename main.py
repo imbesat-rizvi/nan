@@ -72,6 +72,7 @@ def main(exp_config, exp_data=EXP_DATA, exp_models=EXP_MODELS, run=None):
         plot_reconstruction(
             x=(train_data, val_data, test_data),
             x_pred=(train_pred, val_pred, test_pred),
+            interp_range=exp_config["data_args"]["interp_range"],
             save_path=save_path,
         )
 
