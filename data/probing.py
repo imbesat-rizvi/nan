@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 from torch.utils.data import DataLoader
 
 
@@ -54,8 +55,16 @@ def gen_reconstruct_set(
         )
 
     if dataloader_kwargs:
-        train_data = DataLoader(train_data, **dataloader_kwargs)
-        val_data = DataLoader(val_data, **dataloader_kwargs)
-        test_data = DataLoader(test_data, **dataloader_kwargs)
+        train_data = DataLoader(
+            torch.tensor(train_data, dtype=torch.get_default_dtype()),
+            **dataloader_kwargs
+        )
+        val_data = DataLoader(
+            torch.tensor(val_data, dtype=torch.get_default_dtype()), **dataloader_kwargs
+        )
+        test_data = DataLoader(
+            torch.tensor(test_data, dtype=torch.get_default_dtype()),
+            **dataloader_kwargs
+        )
 
     return train_data, val_data, test_data

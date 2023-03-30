@@ -6,3 +6,52 @@ neptune:
     - numeric-encoding
     - numeracy-probing
     - without-LM
+
+exp:
+  name: reconstruction
+  
+  data_args:
+    number_range:
+      - -2000
+      - 2000
+    interp_range:
+      - -500
+      - 500
+    as_int: true
+    train_size: 0.6
+    test_size: 0.2
+    random_state: 42
+    dataloader_kwargs:
+      batch_size: 64
+      shuffle: false
+      num_workers: 1
+
+  neural_net_args:
+    emb_name: encoding
+    num_layers: 2
+    hidden_size: 10
+    dropout: 0
+    non_linearity: ReLU
+
+  model_args:
+    optimizer_name: AdamW
+    optimizer_kwargs:
+      lr: 1.0e-3
+    scheduler_name: ReduceLROnPlateau
+    scheduler_kwargs:
+      patience: 5
+    scheduler_config:
+      monitor: val_loss
+      mode: min
+      frequency: 1
+
+  trainer_args:
+    default_root_dir: outputs/probing/reconstruction
+    max_epochs: 500
+  
+  trainer_callbacks:
+    EarlyStopping:
+      monitor: val_loss
+      min_delta: 1.0e-4
+      patience: 7
+      mode: min
