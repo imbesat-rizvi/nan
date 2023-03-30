@@ -30,8 +30,8 @@ exp:
     emb_name: encoding
     num_layers: 2
     hidden_size: 10
-    dropout: 0
-    non_linearity: ReLU
+    dropout: 0.2
+    non_linearity: Tanh
 
   model_args:
     optimizer_name: AdamW

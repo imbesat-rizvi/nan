@@ -106,4 +106,6 @@ if __name__ == "__main__":
             tags=config["neptune"]["tags"],
         )
 
+        run["config/config"].upload(args.config)
+
     main(exp_config=config["exp"], run=run)
