@@ -15,6 +15,7 @@ except ModuleNotFoundError:
 
 from data.probing import gen_reconstruct_set
 from models.probing import Reconstructor, LitReconstructor
+from models.utils.plot_utils import plot_reconstruction
 
 
 EXP_DATA = dict(
@@ -40,12 +41,11 @@ def main(exp_config, exp_data=EXP_DATA, exp_models=EXP_MODELS, run=None):
         neural_net, **exp_config["model_args"]
     )
 
-    # output_dir = Path(exp_config["output_dir"]) / exp_config["name"]
-    # output_dir.mkdir(parents=True, exist_ok=True)
-
     logger = None
     if run is not None:
         logger = pl.loggers.NeptuneLogger(run=run, log_model_checkpoints=False)
+
+    Path(exp_config["trainer_args"]["default_root_dir"]).mkdir(parents=True, exist_ok=True)
 
     trainer = pl.Trainer(
         callbacks=[
@@ -57,9 +57,26 @@ def main(exp_config, exp_data=EXP_DATA, exp_models=EXP_MODELS, run=None):
     )
 
     trainer.fit(model, train_data, val_data)
-    trainer.test(model, train_data)
-    trainer.test(model, val_data)
-    trainer.test(model, test_data)
+    
+    trainer.test(dataloaders=train_data)
+    trainer.test(dataloaders=val_data)
+    trainer.test(dataloaders=test_data)
+
+    train_pred = trainer.predict(dataloaders=train_data)
+    val_pred = trainer.predict(dataloaders=val_data)
+    test_pred = trainer.predict(dataloaders=test_data)
+
+    if exp_config["name"] == "reconstruction":
+        save_path=Path(exp_config["plot_args"]["save_path"])/"reconstruction.jpg"
+
+        plot_reconstruction(
+            x=(train_data, val_data, test_data),
+            x_pred=(train_pred, val_pred, test_pred),
+            save_path=save_path,
+        )
+
+        if run is not None:
+            run[f"reference/{save_path.name}"].upload(str(save_path))
 
 
 if __name__ == "__main__":
@@ -106,6 +123,6 @@ if __name__ == "__main__":
             tags=config["neptune"]["tags"],
         )
 
-        run["config/config"].upload(args.config)
+        run["reference/config.yaml"].upload(args.config)
 
     main(exp_config=config["exp"], run=run)

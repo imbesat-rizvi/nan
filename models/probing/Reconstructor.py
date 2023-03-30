@@ -1,6 +1,8 @@
 import torch
 from torch import nn, optim
 
+from functools import partial
+
 try:
     import lightning.pytorch as pl  # latest
 except ModuleNotFoundError:
@@ -11,9 +13,14 @@ from nan.encoding import encode_nums, encode_aux
 from ..utils.model_utils import create_fcn
 
 
-def get_embedder(emb_name="encoding"):
+def get_embedder(emb_name="encoding", emb_args=dict(use_aux=True, nums={}, aux={})):
     if emb_name == "encoding":
-        embedder = lambda x: torch.hstack((encode_nums(x), encode_aux(x)))
+        if emb_args.get("use_aux", False):
+            num_encoder = partial(encode_nums, **emb_args["nums"])
+            embedder = lambda x: torch.hstack((num_encoder(x), encode_aux(x, num_encoder=num_encoder, **emb_args["aux"])))
+        else:
+            embedder = lambda x: encode_nums(x, **emb_args["nums"])
+    
     return embedder
 
 
@@ -21,6 +28,7 @@ class Reconstructor(nn.Module):
     def __init__(
         self,
         emb_name="encoding",
+        emb_args=dict(use_aux=True, nums={}, aux={}),
         num_layers=2,
         hidden_size=64,
         dropout=0.2,
@@ -28,7 +36,7 @@ class Reconstructor(nn.Module):
     ):
 
         super().__init__()
-        self.embedder = get_embedder(emb_name)
+        self.embedder = get_embedder(emb_name, emb_args)
 
         if hasattr(self.embedder, "hidden_size"):
             emb_size = self.embedder.hidden_size
@@ -86,6 +94,9 @@ class LitReconstructor(pl.LightningModule):
         loss = self.loss_func(self.neural_net(batch), batch)
         self.log("test_loss", loss)
         return loss
+
+    def predict_step(self, batch, batch_idx):
+        return self.neural_net(batch)
 
     def configure_optimizers(self):
         optimizer = getattr(optim, self.optimizer_name)(

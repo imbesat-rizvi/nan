@@ -134,10 +134,10 @@ def encode_nums(
 
     if digit_kwargs:
         encoding = np.hstack((encoding, digit_encoder(nums, **digit_kwargs)))
-    # if order_kwargs:
-    #     encoding = np.hstack((encoding, order_encoder(nums, **order_kwargs)))
-    # if sinusoidal_kwargs:
-    #     encoding = np.hstack((encoding, sinusoidal_encoder(nums, **sinusoidal_kwargs)))
+    if order_kwargs:
+        encoding = np.hstack((encoding, order_encoder(nums, **order_kwargs)))
+    if sinusoidal_kwargs:
+        encoding = np.hstack((encoding, sinusoidal_encoder(nums, **sinusoidal_kwargs)))
 
     if to_torch:
         encoding = torch.tensor(encoding, dtype=torch.get_default_dtype())
