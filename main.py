@@ -45,7 +45,9 @@ def main(exp_config, exp_data=EXP_DATA, exp_models=EXP_MODELS, run=None):
     if run is not None:
         logger = pl.loggers.NeptuneLogger(run=run, log_model_checkpoints=False)
 
-    Path(exp_config["trainer_args"]["default_root_dir"]).mkdir(parents=True, exist_ok=True)
+    Path(exp_config["trainer_args"]["default_root_dir"]).mkdir(
+        parents=True, exist_ok=True
+    )
 
     trainer = pl.Trainer(
         callbacks=[
@@ -57,7 +59,7 @@ def main(exp_config, exp_data=EXP_DATA, exp_models=EXP_MODELS, run=None):
     )
 
     trainer.fit(model, train_data, val_data)
-    
+
     trainer.test(dataloaders=train_data)
     trainer.test(dataloaders=val_data)
     trainer.test(dataloaders=test_data)
@@ -67,7 +69,7 @@ def main(exp_config, exp_data=EXP_DATA, exp_models=EXP_MODELS, run=None):
     test_pred = trainer.predict(dataloaders=test_data)
 
     if exp_config["name"] == "reconstruction":
-        save_path=Path(exp_config["plot_args"]["save_path"])/"reconstruction.jpg"
+        save_path = Path(exp_config["plot_args"]["save_path"]) / "reconstruction.jpg"
 
         plot_reconstruction(
             x=(train_data, val_data, test_data),

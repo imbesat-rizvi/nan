@@ -43,9 +43,9 @@ exp:
       aux:
         log_aux: true
     num_layers: 2
-    hidden_size: 256
-    dropout: 0.2
-    non_linearity: ReLU
+    hidden_size: 256 # immaterial for 1-layer linear net
+    dropout: 0.2 # immaterial for 1-layer linear net
+    non_linearity: ReLU # immaterial for 1-layer linear net
 
   model_args:
     optimizer_name: AdamW
