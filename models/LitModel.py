@@ -52,7 +52,7 @@ class LitModel(pl.LightningModule):
         return loss
 
     def predict_step(self, batch, batch_idx):
-        if isinstance(batch, tuple):
+        if isinstance(batch, list):
             return self.neural_net(batch[0])
         else:
             return self.neural_net(batch)

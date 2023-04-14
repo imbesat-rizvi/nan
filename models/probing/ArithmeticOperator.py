@@ -43,8 +43,8 @@ class ArithmeticOperator(nn.Module):
 
 
 class LitArithmeticOperator(LitModel):
-    def __init__(self, task_weights=1, **kwargs):
-        super().__init__(**kwargs)
+    def __init__(self, neural_net, task_weights=1, **kwargs):
+        super().__init__(neural_net, **kwargs)
 
         if not isinstance(task_weights, int):
             assert len(task_weights) == len(self.neural_net.ops_heads)
@@ -53,14 +53,12 @@ class LitArithmeticOperator(LitModel):
         self.task_weights = task_weights
         self.loss_func = self.ops_loss
 
-    def ops_loss(self, x, y):
-        out = self.neural_net(x)
-        out = torch.vstack(out).T
+    def ops_loss(self, y_pred, y):
+        y_pred = torch.vstack(y_pred).T
+        if y.shape != y_pred.shape:
+            y = y.reshape(y_pred.shape)
 
-        if y.shape != out.shape:
-            y = y.reshape(out.shape)
-
-        task_mse = nn.functional.mse_loss(out, y, reduction="none").mean(axis=0)
+        task_mse = nn.functional.mse_loss(y_pred, y, reduction="none").mean(axis=0)
         task_rmse = torch.sqrt(task_mse + 1e-8)  # 1e-8 as eps for nan gradient
         weighted_rmse = torch.sum(self.task_weights * task_rmse)
 
