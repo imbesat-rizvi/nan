@@ -37,22 +37,25 @@ class LitModel(pl.LightningModule):
         self.scheduler_config = scheduler_config
 
     def training_step(self, batch, batch_idx):
-        loss = self.loss_func(self.neural_net(batch), batch)
+        loss = self.loss_func(self.neural_net(batch[0]), batch[1])
         self.log("train_loss", loss, on_epoch=True)
         return loss
 
     def validation_step(self, batch, batch_idx):
-        loss = self.loss_func(self.neural_net(batch), batch)
+        loss = self.loss_func(self.neural_net(batch[0]), batch[1])
         self.log("val_loss", loss)
         return loss
 
     def test_step(self, batch, batch_idx):
-        loss = self.loss_func(self.neural_net(batch), batch)
+        loss = self.loss_func(self.neural_net(batch[0]), batch[1])
         self.log("test_loss", loss)
         return loss
 
     def predict_step(self, batch, batch_idx):
-        return self.neural_net(batch)
+        if isinstance(batch, tuple):
+            return self.neural_net(batch[0])
+        else:
+            return self.neural_net(batch)
 
     def configure_optimizers(self):
         optimizer = getattr(optim, self.optimizer_name)(

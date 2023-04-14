@@ -13,17 +13,26 @@ except ModuleNotFoundError:
     import pytorch_lightning as pl  # older
 
 
-from data.probing import gen_reconstruct_set
-from models.probing import Reconstructor, LitReconstructor
+from data.probing import gen_reconstruct_set, gen_arith_op_set
+from models.probing import (
+    Reconstructor,
+    LitReconstructor,
+    ArithmeticOperator,
+    LitArithmeticOperator,
+)
 from models.utils.plot_utils import plot_reconstruction
 
 
 EXP_DATA = dict(
     reconstruction=gen_reconstruct_set,
+    arithmetic_operations=gen_arith_op_set,
 )
 
 EXP_MODELS = dict(
     reconstruction=dict(neural_net=Reconstructor, model=LitReconstructor),
+    arithmetic_operations=dict(
+        neural_net=ArithmeticOperator, model=LitArithmeticOperator
+    ),
 )
 
 
