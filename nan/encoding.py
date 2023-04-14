@@ -63,7 +63,7 @@ def func_encoder(
     """
 
     # work on log scale and then exponentiate for correct precision
-    log_scale_base = torch.log(scale_base)
+    log_scale_base = torch.log(torch.tensor(scale_base))
 
     exps = scale_exp
     if isinstance(scale_exp, int):
@@ -76,7 +76,7 @@ def func_encoder(
     scale = torch.exp(-exps * log_scale_base / exp_divisor)
 
     nums = torch.atleast_1d(nums).reshape((-1, 1))
-    encoding = func(nums * scale)
+    encoding = func(nums * scale.to(nums.device))
 
     encoding[torch.abs(encoding) < tol] = 0
     return encoding
@@ -88,7 +88,7 @@ def digit_encoder(x, int_decimals=12, frac_decimals=12):
         digits = torch.floor(torch.fmod(digits, 10)) / 10  # scale digits from 0 to 1
         return digits
 
-    frac, intgr = [i.to(x.device) for i in np.modf(torch.abs(x).cpu())]
+    frac, intgr = np.modf(torch.abs(x).cpu())
 
     int_digits = digits_from_pos_ints(intgr, int_decimals)
 
@@ -99,7 +99,7 @@ def digit_encoder(x, int_decimals=12, frac_decimals=12):
     frac_digits = digits_from_pos_ints(frac_digits, frac_decimals)
 
     sign = torch.sign(x).reshape(-1, 1)
-    encoding = torch.hstack((sign, int_digits, frac_digits))
+    encoding = torch.hstack((sign, int_digits.to(x.device), frac_digits.to(x.device)))
     return encoding
 
 
@@ -129,14 +129,16 @@ def encode_nums(
 ):
 
     num_counts = len(nums) if not isinstance(nums, (int, float)) else 1
-    encoding = torch.empty(size=(num_counts, 0))
+    encoding = torch.empty(size=(num_counts, 0), device=nums.device)
 
     if digit_kwargs:
         encoding = torch.hstack((encoding, digit_encoder(nums, **digit_kwargs)))
     if order_kwargs:
         encoding = torch.hstack((encoding, order_encoder(nums, **order_kwargs)))
     if sinusoidal_kwargs:
-        encoding = torch.hstack((encoding, sinusoidal_encoder(nums, **sinusoidal_kwargs)))
+        encoding = torch.hstack(
+            (encoding, sinusoidal_encoder(nums, **sinusoidal_kwargs))
+        )
 
     return encoding if num_counts > 1 else encoding[0]
 
@@ -149,7 +151,7 @@ def log_func(x):
 def encode_aux(nums, num_encoder=encode_nums, log_aux=True):
 
     num_counts = len(nums) if not isinstance(nums, (int, float)) else 1
-    aux_encoding = torch.empty(size=(num_counts, 0))
+    aux_encoding = torch.empty(size=(num_counts, 0), device=nums.device)
     if log_aux:
         encoding = num_encoder(log_func(nums)).reshape(num_counts, -1)
         aux_encoding = torch.hstack((aux_encoding, encoding))
