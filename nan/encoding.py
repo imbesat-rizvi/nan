@@ -88,7 +88,7 @@ def digit_encoder(x, int_decimals=12, frac_decimals=12):
         digits = torch.floor(torch.fmod(digits, 10)) / 10  # scale digits from 0 to 1
         return digits
 
-    frac, intgr = np.modf(torch.abs(x).cpu())
+    frac, intgr = [i.to(x.device) for i in np.modf(torch.abs(x).cpu())]
 
     int_digits = digits_from_pos_ints(intgr, int_decimals)
 
