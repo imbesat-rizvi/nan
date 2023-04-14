@@ -27,7 +27,7 @@ class ArithmeticOperator(nn.Module):
         if hasattr(self.embedder, "hidden_size"):
             emb_size = self.embedder.hidden_size
         else:
-            emb_size = self.embedder(0).shape[-1]
+            emb_size = self.embedder(torch.tensor([0])).shape[-1]
 
         self.ops_heads = create_fc_task_nets(
             in_size=2 * emb_size,

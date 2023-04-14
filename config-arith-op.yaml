@@ -21,6 +21,8 @@ exp:
     as_int: true
     ops:
       - add
+      # - mul
+      # - max
     train_size: 0.6
     test_size: 0.2
     random_state: 42

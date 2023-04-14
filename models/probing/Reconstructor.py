@@ -1,3 +1,4 @@
+import torch
 from torch import nn
 
 from .probe_utils import get_embedder
@@ -25,7 +26,7 @@ class Reconstructor(nn.Module):
         if hasattr(self.embedder, "hidden_size"):
             emb_size = self.embedder.hidden_size
         else:
-            emb_size = self.embedder(0).shape[-1]
+            emb_size = self.embedder(torch.tensor([0])).shape[-1]
 
         self.fcn = create_fcn(
             in_size=emb_size,

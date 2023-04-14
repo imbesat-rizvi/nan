@@ -1,12 +1,12 @@
-neptune:
-  workspace: imbesat-rizvi
-  project-name: Reconstruction-Probing-NaN
-  run-name: Only-encoding
-  tags:
-    - reconstruction
-    - numeric-encoding
-    - numeracy-probing
-    - without-LM
+# neptune:
+#   workspace: imbesat-rizvi
+#   project-name: Reconstruction-Probing-NaN
+#   run-name: Only-encoding
+#   tags:
+#     - reconstruction
+#     - numeric-encoding
+#     - numeracy-probing
+#     - without-LM
 
 exp:
   name: reconstruction

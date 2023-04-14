@@ -3,11 +3,11 @@ import torch
 
 
 def arctan_func(x):
-    return 2 * np.arctan(x) / np.pi
+    return 2 * torch.arctan(x) / torch.pi
 
 
 def periodic_func(x):
-    return np.dstack((np.sin(x), np.cos(x))).reshape(x.shape[0], -1)
+    return torch.dstack((torch.sin(x), torch.cos(x))).reshape(x.shape[0], -1)
 
 
 def func_encoder(
@@ -63,43 +63,43 @@ def func_encoder(
     """
 
     # work on log scale and then exponentiate for correct precision
-    log_scale_base = np.log(scale_base)
+    log_scale_base = torch.log(scale_base)
 
     exps = scale_exp
     if isinstance(scale_exp, int):
-        exps = np.arange(1, scale_exp)
+        exps = torch.arange(1, scale_exp)
         if not skip_zero_exp:
-            exps = np.concatenate(([0], exps))
+            exps = torch.cat((torch.tensor([0]), exps))
         if symmetric_exp:
-            exps = np.concatenate((np.arange(-scale_exp + 1, 0), exps))
+            exps = torch.cat((torch.arange(-scale_exp + 1, 0), exps))
 
-    scale = np.exp(-exps * log_scale_base / exp_divisor)
+    scale = torch.exp(-exps * log_scale_base / exp_divisor)
 
-    nums = np.atleast_1d(nums).reshape((-1, 1))
+    nums = torch.atleast_1d(nums).reshape((-1, 1))
     encoding = func(nums * scale)
 
-    encoding[np.abs(encoding) < tol] = 0
+    encoding[torch.abs(encoding) < tol] = 0
     return encoding
 
 
 def digit_encoder(x, int_decimals=12, frac_decimals=12):
     def digits_from_pos_ints(n, decimals):
-        digits = n.reshape(-1, 1) / np.power(10, np.arange(decimals - 1, -1, -1))
-        digits = np.floor(np.mod(digits, 10)) / 10  # scale digits from 0 to 1
+        digits = n.reshape(-1, 1) / torch.pow(10, torch.arange(decimals - 1, -1, -1))
+        digits = torch.floor(torch.fmod(digits, 10)) / 10  # scale digits from 0 to 1
         return digits
 
-    frac, intgr = np.modf(np.abs(x))
+    frac, intgr = np.modf(torch.abs(x).cpu())
 
     int_digits = digits_from_pos_ints(intgr, int_decimals)
 
-    frac_digits = np.floor(frac * 10**frac_decimals)
+    frac_digits = torch.floor(frac * 10**frac_decimals)
     can_be_safely_rounded = frac_digits < 10**frac_decimals - 1  # i.e. not all 9s
-    need_to_be_rounded = np.mod(frac_digits, 100) == 99  # i.e. last 2 digits 9
+    need_to_be_rounded = torch.fmod(frac_digits, 100) == 99  # i.e. last 2 digits 9
     frac_digits += can_be_safely_rounded * need_to_be_rounded
     frac_digits = digits_from_pos_ints(frac_digits, frac_decimals)
 
-    sign = np.sign(x).reshape(-1, 1)
-    encoding = np.hstack((sign, int_digits, frac_digits))
+    sign = torch.sign(x).reshape(-1, 1)
+    encoding = torch.hstack((sign, int_digits, frac_digits))
     return encoding
 
 
@@ -126,37 +126,32 @@ def encode_nums(
     digit_kwargs=dict(int_decimals=12, frac_decimals=12),
     order_kwargs=dict(scale_exp=13),
     sinusoidal_kwargs=dict(scale_base=10000, exp_divisor=50),
-    to_torch=True,
 ):
 
     num_counts = len(nums) if not isinstance(nums, (int, float)) else 1
-    encoding = np.empty(shape=(num_counts, 0))
+    encoding = torch.empty(size=(num_counts, 0))
 
     if digit_kwargs:
-        encoding = np.hstack((encoding, digit_encoder(nums, **digit_kwargs)))
+        encoding = torch.hstack((encoding, digit_encoder(nums, **digit_kwargs)))
     if order_kwargs:
-        encoding = np.hstack((encoding, order_encoder(nums, **order_kwargs)))
+        encoding = torch.hstack((encoding, order_encoder(nums, **order_kwargs)))
     if sinusoidal_kwargs:
-        encoding = np.hstack((encoding, sinusoidal_encoder(nums, **sinusoidal_kwargs)))
+        encoding = torch.hstack((encoding, sinusoidal_encoder(nums, **sinusoidal_kwargs)))
 
-    if to_torch:
-        encoding = torch.tensor(encoding, dtype=torch.get_default_dtype())
     return encoding if num_counts > 1 else encoding[0]
 
 
 def log_func(x):
-    eps = (x == 0) * np.finfo("float").eps
-    return np.log(np.abs(x) + eps)
+    eps = (x == 0) * torch.finfo(torch.get_default_dtype()).eps
+    return torch.log(torch.abs(x) + eps)
 
 
-def encode_aux(nums, num_encoder=encode_nums, log_aux=True, to_torch=True):
+def encode_aux(nums, num_encoder=encode_nums, log_aux=True):
 
     num_counts = len(nums) if not isinstance(nums, (int, float)) else 1
-    aux_encoding = np.empty(shape=(num_counts, 0))
+    aux_encoding = torch.empty(size=(num_counts, 0))
     if log_aux:
         encoding = num_encoder(log_func(nums)).reshape(num_counts, -1)
-        aux_encoding = np.hstack((aux_encoding, encoding))
+        aux_encoding = torch.hstack((aux_encoding, encoding))
 
-    if to_torch:
-        aux_encoding = torch.tensor(aux_encoding, dtype=torch.get_default_dtype())
     return aux_encoding if num_counts > 1 else aux_encoding[0]
