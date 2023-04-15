@@ -38,8 +38,9 @@ class ArithmeticOperator(nn.Module):
 
     def forward(self, x):
         x = torch.cat((self.embedder(x[:, 0]), self.embedder(x[:, 1])), axis=-1)
-        x = [op_head(x).flatten() for op_head in self.ops_heads]
-        return x
+        out = [op_head(x).flatten() for op_head in self.ops_heads]
+        out = torch.vstack(out).T
+        return out
 
 
 class LitArithmeticOperator(LitModel):
@@ -54,12 +55,10 @@ class LitArithmeticOperator(LitModel):
         self.loss_func = self.ops_loss
 
     def ops_loss(self, y_pred, y):
-        y_pred = torch.vstack(y_pred).T
         if y.shape != y_pred.shape:
             y = y.reshape(y_pred.shape)
 
         task_mse = nn.functional.mse_loss(y_pred, y, reduction="none").mean(axis=0)
-        task_rmse = torch.sqrt(task_mse + 1e-8)  # 1e-8 as eps for nan gradient
-        weighted_rmse = torch.sum(self.task_weights * task_rmse)
+        weighted_mse = torch.sum(self.task_weights * task_mse)
 
-        return weighted_rmse
+        return weighted_mse

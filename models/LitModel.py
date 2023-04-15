@@ -7,15 +7,11 @@ except ModuleNotFoundError:
     import pytorch_lightning as pl  # older
 
 
-def rmse_loss(x, y):
-    return torch.sqrt(nn.functional.mse_loss(x, y))
-
-
 class LitModel(pl.LightningModule):
     def __init__(
         self,
         neural_net,
-        loss_func=rmse_loss,
+        loss_func=nn.functional.mse_loss,
         optimizer_name="AdamW",
         optimizer_kwargs=dict(lr=1e-3),
         scheduler_name="ReduceLROnPlateau",
