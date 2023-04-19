@@ -29,19 +29,24 @@ exp:
 
   neural_net_args:
     emb_name: encoding
-    emb_args:
-      use_aux: false
-      nums:
+    emb_kwargs:
+      nums_kwargs:
         digit_kwargs: 
           int_decimals: 12
           frac_decimals: 12
-        order_kwargs: {}
+        order_kwargs: 
           # scale_exp: 13
-        sinusoidal_kwargs: {}
+        sinusoidal_kwargs: 
           # scale_base: 10000
           # exp_divisor: 50
-      aux:
+        dice_kwargs:
+          # low: -500
+          # high: 500
+          # dim: 10
+      aux_kwargs:
         log_aux: true
+      use_aux: only
+      random_state: 42
     num_layers: 2
     hidden_size: 256 # immaterial for 1-layer linear net
     dropout: 0.2 # immaterial for 1-layer linear net

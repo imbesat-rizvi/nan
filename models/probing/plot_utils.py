@@ -4,7 +4,7 @@ import seaborn as sns
 
 
 def plot_reconstruction(x, x_pred, interp_range=None, save_path=None):
-    x = torch.cat([i.dataset for i in x])
+    x = torch.cat([i.dataset[:][0] for i in x])
     x_pred = torch.cat([torch.cat(i) for i in x_pred])
 
     fig, ax = plt.subplots()

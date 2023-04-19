@@ -2,6 +2,19 @@ import numpy as np
 import torch
 
 
+def scaled_range_func(x, scale_exp=13):
+    x = x.reshape((-1,1))*(10.**torch.arange(-scale_exp+1,scale_exp))
+    x[torch.abs(x)<0.1] = 0
+    x[torch.abs(x)>=1] = 0
+    return x
+
+
+def polar_to_NDim_cartesian(theta, dim=2):
+    x = torch.sin(theta).reshape(-1,1) ** torch.arange(0,dim)
+    x[:,:-1] *= torch.cos(theta).reshape(-1,1)
+    return x
+
+
 def arctan_func(x):
     return 2 * torch.arctan(x) / torch.pi
 
@@ -75,7 +88,7 @@ def func_encoder(
 
     scale = torch.exp(-exps * log_scale_base / exp_divisor)
 
-    nums = torch.atleast_1d(nums).reshape((-1, 1))
+    nums = nums.reshape((-1, 1))
     encoding = func(nums * scale.to(nums.device))
 
     encoding[torch.abs(encoding) < tol] = 0
@@ -104,6 +117,7 @@ def digit_encoder(x, int_decimals=12, frac_decimals=12):
 
 
 def order_encoder(x, scale_exp=13):
+    # return scaled_range_func(x, scale_exp=scale_exp)
     return func_encoder(x, func=arctan_func, scale_exp=scale_exp)
 
 
@@ -121,11 +135,23 @@ def sinusoidal_encoder(x, scale_base=10_000, exp_divisor=50):
     return encoding
 
 
+def dice_encoder(x, low=0, high=1000, dim=10, Q=None, random_state=42):
+    if Q is None:
+        rng = torch.Generator().manual_seed(random_state)
+        M = torch.normal(mean=0, std=1, size=(dim,dim), generator=rng)
+        Q, _ = torch.linalg.qr(M, mode="complete")
+
+    theta = (x - low) * torch.pi / abs(high-low)
+    v = polar_to_NDim_cartesian(theta, dim=dim)
+    encoding = torch.matmul(Q,v.T).T
+    return encoding
+
 def encode_nums(
     nums,
     digit_kwargs=dict(int_decimals=12, frac_decimals=12),
     order_kwargs=dict(scale_exp=13),
     sinusoidal_kwargs=dict(scale_base=10000, exp_divisor=50),
+    dice_kwargs=dict(low=0, high=1000, dim=10, Q=None, random_state=42),
 ):
 
     num_counts = len(nums) if not isinstance(nums, (int, float)) else 1
@@ -139,6 +165,8 @@ def encode_nums(
         encoding = torch.hstack(
             (encoding, sinusoidal_encoder(nums, **sinusoidal_kwargs))
         )
+    if dice_kwargs:
+        encoding = torch.hstack((encoding, dice_encoder(nums, **dice_kwargs)))
 
     return encoding if num_counts > 1 else encoding[0]
 

@@ -20,7 +20,7 @@ from models.probing import (
     ArithmeticOperator,
     LitArithmeticOperator,
 )
-from models.utils.plot_utils import plot_reconstruction
+from models.probing.plot_utils import plot_reconstruction
 
 
 EXP_DATA = dict(

@@ -13,7 +13,7 @@ class Reconstructor(nn.Module):
     def __init__(
         self,
         emb_name="encoding",
-        emb_args=dict(use_aux=True, nums={}, aux={}),
+        emb_kwargs=dict(use_aux=True, nums={}, aux={}),
         num_layers=2,
         hidden_size=64,
         dropout=0.2,
@@ -21,7 +21,7 @@ class Reconstructor(nn.Module):
     ):
 
         super().__init__()
-        self.embedder = get_embedder(emb_name, emb_args)
+        self.embedder = get_embedder(emb_name, emb_kwargs)
 
         if hasattr(self.embedder, "hidden_size"):
             emb_size = self.embedder.hidden_size

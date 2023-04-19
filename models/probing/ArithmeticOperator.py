@@ -10,7 +10,7 @@ class ArithmeticOperator(nn.Module):
     def __init__(
         self,
         emb_name="encoding",
-        emb_args=dict(use_aux=True, nums={}, aux={}),
+        emb_kwargs=dict(use_aux=True, nums={}, aux={}),
         num_ops=1,
         ops_kwargs=dict(
             num_layers=2,
@@ -22,7 +22,7 @@ class ArithmeticOperator(nn.Module):
         r"""Arithmetic Operator for 2 numbers"""
 
         super().__init__()
-        self.embedder = get_embedder(emb_name, emb_args)
+        self.embedder = get_embedder(emb_name, emb_kwargs)
 
         if hasattr(self.embedder, "hidden_size"):
             emb_size = self.embedder.hidden_size
