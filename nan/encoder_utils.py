@@ -3,15 +3,17 @@ import torch
 
 
 def scaled_range_func(x, scale_exp=13):
-    x = x.reshape((-1,1))*(10.**torch.arange(-scale_exp+1,scale_exp))
-    x[torch.abs(x)<0.1] = 0
-    x[torch.abs(x)>=1] = 0
+    x = x.reshape((-1, 1)) * (10.0 ** torch.arange(-scale_exp + 1, scale_exp))
+    x[torch.abs(x) < 0.1] = 0
+    x[torch.abs(x) >= 1] = 0
     return x
 
 
 def polar_to_NDim_cartesian(theta, dim=2):
-    x = torch.sin(theta).reshape(-1,1) ** torch.arange(0,dim)
-    x[:,:-1] *= torch.cos(theta).reshape(-1,1)
+    r"""From DICE Embedding paper:
+    https://aclanthology.org/2020.emnlp-main.384/"""
+    x = torch.sin(theta).reshape(-1, 1) ** torch.arange(0, dim)
+    x[:, :-1] *= torch.cos(theta).reshape(-1, 1)
     return x
 
 
@@ -136,15 +138,18 @@ def sinusoidal_encoder(x, scale_base=10_000, exp_divisor=50):
 
 
 def dice_encoder(x, low=0, high=1000, dim=10, Q=None, random_state=42):
+    r"""From DICE Embedding paper:
+    https://aclanthology.org/2020.emnlp-main.384/"""
     if Q is None:
         rng = torch.Generator().manual_seed(random_state)
-        M = torch.normal(mean=0, std=1, size=(dim,dim), generator=rng)
+        M = torch.normal(mean=0, std=1, size=(dim, dim), generator=rng)
         Q, _ = torch.linalg.qr(M, mode="complete")
 
-    theta = (x - low) * torch.pi / abs(high-low)
+    theta = (x - low) * torch.pi / abs(high - low)
     v = polar_to_NDim_cartesian(theta, dim=dim)
-    encoding = torch.matmul(Q,v.T).T
+    encoding = torch.matmul(Q, v.T).T
     return encoding
+
 
 def encode_nums(
     nums,
