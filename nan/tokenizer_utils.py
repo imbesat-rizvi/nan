@@ -44,13 +44,19 @@ def split_and_tag_at_nums(text, tag="<N>"):
         is_num.append(1)
         prev_span_start = span[1]
 
+    if prev_span_start != len(text):
+        splits.append(text[prev_span_start:])
+        is_num.append(0)
+
     return splits, is_num
 
 
 def tagged_tokens_to_nums(tokens, tag="<N>"):
     def tok_to_num(txt):
+        # is_num to differentiate between 0 as num vs 0 for text
         if txt[: len(tag)] == tag and txt[-len(tag) :] == tag:
-            return float(txt[len(tag) : -len(tag)])
-        return 0
+            return float(txt[len(tag) : -len(tag)]), 1  # num, is_num
+        return 0, 0  # num, is_num
 
-    return [tok_to_num(i) for i in tokens]
+    nums, is_num = zip(*(tok_to_num(i) for i in tokens))
+    return list(nums), list(is_num)
