@@ -32,23 +32,26 @@ exp:
       num_workers: 1
 
   neural_net_args:
-    emb_name: encoding
+    emb_name: NANEmbedder
     emb_kwargs:
+      emb_net:
       nums_kwargs:
         digit_kwargs: 
-          # int_decimals: 12
-          # frac_decimals: 12
+          int_decimals: 12
+          frac_decimals: 12
         order_kwargs: 
           # scale_exp: 13
         sinusoidal_kwargs: 
-          scale_base: 10000
-          exp_divisor: 50
+          # scale_base: 10000
+          # exp_divisor: 50
         dice_kwargs:
           # low: 0
           # high: 10000
           # dim: 10
+        concate: true
       aux_kwargs:
         log_aux: true
+        concat: true
       use_aux: false
       random_state: 42
     num_ops: 1

@@ -1,2 +1,2 @@
-from .NANEncoder import NANEncoder
+from .NANEmbedder import NANEmbedder
 from .NANTokenizer import NANTokenizer

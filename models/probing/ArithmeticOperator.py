@@ -1,9 +1,10 @@
 import torch
 from torch import nn
 
+from nan.model_utils import create_fc_task_nets
+
 from .probe_utils import get_embedder
 from .. import LitModel
-from ..utils.model_utils import create_fc_task_nets
 
 
 class ArithmeticOperator(nn.Module):

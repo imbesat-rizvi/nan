@@ -3,7 +3,7 @@ import torch
 
 
 def scaled_range_func(x, scale_exp=13):
-    x = x.reshape((-1, 1)) * (10.0 ** torch.arange(-scale_exp + 1, scale_exp))
+    x = x.unsqueeze(-1) * (10.0 ** torch.arange(-scale_exp + 1, scale_exp))
     x[torch.abs(x) < 0.1] = 0
     x[torch.abs(x) >= 1] = 0
     return x
@@ -11,9 +11,11 @@ def scaled_range_func(x, scale_exp=13):
 
 def polar_to_NDim_cartesian(theta, dim=2):
     r"""From DICE Embedding paper:
-    https://aclanthology.org/2020.emnlp-main.384/"""
-    x = torch.sin(theta).reshape(-1, 1) ** torch.arange(0, dim)
-    x[:, :-1] *= torch.cos(theta).reshape(-1, 1)
+    https://aclanthology.org/2020.emnlp-main.384/
+    power of sins' dependent on precision of theta"""
+    theta = theta.unsqueeze(-1)
+    x = torch.sin(theta) ** torch.arange(0, dim)
+    x[..., :-1] *= torch.cos(theta)
     return x
 
 
@@ -22,7 +24,7 @@ def arctan_func(x):
 
 
 def periodic_func(x):
-    return torch.dstack((torch.sin(x), torch.cos(x))).reshape(x.shape[0], -1)
+    return torch.stack((torch.sin(x), torch.cos(x)), dim=-1).view(*x.shape[:-1], -1)
 
 
 def func_encoder(
@@ -90,16 +92,17 @@ def func_encoder(
 
     scale = torch.exp(-exps * log_scale_base / exp_divisor)
 
-    nums = nums.reshape((-1, 1))
-    encoding = func(nums * scale.to(nums.device))
-
+    encoding = func(nums.unsqueeze(-1) * scale.to(nums.device))
     encoding[torch.abs(encoding) < tol] = 0
     return encoding
 
 
 def digit_encoder(x, int_decimals=12, frac_decimals=12):
+    # precision of x affects precision of encoding
     def digits_from_pos_ints(n, decimals):
-        digits = n.reshape(-1, 1) / torch.pow(10, torch.arange(decimals - 1, -1, -1))
+        decimals = torch.pow(10, torch.arange(decimals - 1, -1, -1))
+        decimals = decimals.expand(*n.shape, len(decimals))
+        digits = n.unsqueeze(-1) / decimals
         digits = torch.floor(torch.fmod(digits, 10)) / 10  # scale digits from 0 to 1
         return digits
 
@@ -113,14 +116,14 @@ def digit_encoder(x, int_decimals=12, frac_decimals=12):
     frac_digits += can_be_safely_rounded * need_to_be_rounded
     frac_digits = digits_from_pos_ints(frac_digits, frac_decimals)
 
-    sign = torch.sign(x).reshape(-1, 1)
-    encoding = torch.hstack((sign, int_digits.to(x.device), frac_digits.to(x.device)))
+    sign = torch.sign(x).unsqueeze(-1)
+    encoding = torch.cat((sign, int_digits.to(x.device), frac_digits.to(x.device)), -1)
     return encoding
 
 
 def order_encoder(x, scale_exp=13):
-    # return scaled_range_func(x, scale_exp=scale_exp)
     return func_encoder(x, func=arctan_func, scale_exp=scale_exp)
+    # return scaled_range_func(x, scale_exp=scale_exp)
 
 
 def sinusoidal_encoder(x, scale_base=10_000, exp_divisor=50):
@@ -145,9 +148,14 @@ def dice_encoder(x, low=0, high=1000, dim=10, Q=None, random_state=42):
         M = torch.normal(mean=0, std=1, size=(dim, dim), generator=rng)
         Q, _ = torch.linalg.qr(M, mode="complete")
 
-    theta = (x - low) * torch.pi / abs(high - low)
+    assert high > low
+
+    # clip values so that theta lies between 0 and pi
+    # this is different than random mapping in the source paper
+    x = torch.clip(x, min=low, max=high)
+    theta = (x - low) * torch.pi / (high - low)
     v = polar_to_NDim_cartesian(theta, dim=dim)
-    encoding = torch.matmul(Q, v.T).T
+    encoding = torch.matmul(Q, v.mT).mT
     return encoding
 
 
@@ -157,23 +165,22 @@ def encode_nums(
     order_kwargs=dict(scale_exp=13),
     sinusoidal_kwargs=dict(scale_base=10000, exp_divisor=50),
     dice_kwargs=dict(low=0, high=1000, dim=10, Q=None, random_state=42),
+    concat=True,
 ):
 
-    num_counts = len(nums) if not isinstance(nums, (int, float)) else 1
-    encoding = torch.empty(size=(num_counts, 0), device=nums.device)
-
+    encoding = []
     if digit_kwargs:
-        encoding = torch.hstack((encoding, digit_encoder(nums, **digit_kwargs)))
+        encoding.append(digit_encoder(nums, **digit_kwargs))
     if order_kwargs:
-        encoding = torch.hstack((encoding, order_encoder(nums, **order_kwargs)))
+        encoding.append(order_encoder(nums, **order_kwargs))
     if sinusoidal_kwargs:
-        encoding = torch.hstack(
-            (encoding, sinusoidal_encoder(nums, **sinusoidal_kwargs))
-        )
+        encoding.append(sinusoidal_encoder(nums, **sinusoidal_kwargs))
     if dice_kwargs:
-        encoding = torch.hstack((encoding, dice_encoder(nums, **dice_kwargs)))
+        encoding.append(dice_encoder(nums, **dice_kwargs))
 
-    return encoding if num_counts > 1 else encoding[0]
+    if concat:
+        encoding = torch.cat(encoding, dim=-1)
+    return encoding
 
 
 def log_func(x):
@@ -181,12 +188,12 @@ def log_func(x):
     return torch.log(torch.abs(x) + eps)
 
 
-def encode_aux(nums, num_encoder=encode_nums, log_aux=True):
-
-    num_counts = len(nums) if not isinstance(nums, (int, float)) else 1
-    aux_encoding = torch.empty(size=(num_counts, 0), device=nums.device)
+def encode_aux(nums, num_encoder=encode_nums, log_aux=True, concat=True):
+    # concat of num_encoder should be True when using encode_aux
+    aux_encoding = []
     if log_aux:
-        encoding = num_encoder(log_func(nums)).reshape(num_counts, -1)
-        aux_encoding = torch.hstack((aux_encoding, encoding))
+        aux_encoding.append(num_encoder(log_func(nums)))
 
-    return aux_encoding if num_counts > 1 else aux_encoding[0]
+    if concat:
+        aux_encoding = torch.cat(aux_encoding, dim=-1)
+    return aux_encoding

@@ -30,6 +30,7 @@ exp:
   neural_net_args:
     emb_name: encoding
     emb_kwargs:
+      emb_net:
       nums_kwargs:
         digit_kwargs: 
           int_decimals: 12
@@ -43,8 +44,10 @@ exp:
           # low: -500
           # high: 500
           # dim: 10
+        concat: true
       aux_kwargs:
         log_aux: true
+        concat: true
       use_aux: only
       random_state: 42
     num_layers: 2

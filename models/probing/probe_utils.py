@@ -1,11 +1,13 @@
-from nan import NANEncoder
+from nan import NANEmbedder
 
 
 def get_embedder(
-    emb_name="encoding",
-    emb_kwargs=dict(nums_kwargs={}, aux_kwargs={}, use_aux="also", random_state=42),
+    emb_name="NANEmbedder",
+    emb_kwargs=dict(
+        emb_net=None, nums_kwargs={}, aux_kwargs={}, use_aux="also", random_state=42
+    ),
 ):
-    if emb_name == "encoding":
-        embedder = NANEncoder(**emb_kwargs).get_encoder()
+    if emb_name == "NANEmbedder":
+        embedder = NANEmbedder(**emb_kwargs)
 
     return embedder

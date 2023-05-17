@@ -1,9 +1,10 @@
 import torch
 from torch import nn
 
+from nan.model_utils import create_fcn
+
 from .probe_utils import get_embedder
 from .. import LitModel
-from ..utils.model_utils import create_fcn
 
 
 LitReconstructor = LitModel
