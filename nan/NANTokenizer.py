@@ -81,7 +81,7 @@ class NANTokenizer:
                 v,
                 padding_strategy=pad,
                 truncation_strategy=trunc,
-                max_length=max_length,
+                max_length=max_len,
                 pad_to_multiple_of=pad_to_multiple_of,
             )["input_ids"]
 
