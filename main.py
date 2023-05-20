@@ -73,6 +73,7 @@ def main(exp_config, exp_data=EXP_DATA, exp_models=EXP_MODELS, run=None):
     trainer.test(dataloaders=val_data)
     trainer.test(dataloaders=test_data)
 
+    import pdb; pdb.set_trace()
     train_pred = trainer.predict(dataloaders=train_data)
     val_pred = trainer.predict(dataloaders=val_data)
     test_pred = trainer.predict(dataloaders=test_data)

@@ -44,7 +44,7 @@ class NANEmbedder(torch.nn.Module):
             and self.nums_kwargs["dice_kwargs"].get("Q") is None
         ):
             dim = self.nums_kwargs["dice_kwargs"].get("dim", 10)
-            rng = torch.Generator().manual_seed(random_state)
+            rng = torch.Generator().manual_seed(self.random_state)
             M = torch.normal(mean=0, std=1, size=(dim, dim), generator=rng)
             self.nums_kwargs["dice_kwargs"]["Q"], _ = torch.linalg.qr(
                 M, mode="complete"

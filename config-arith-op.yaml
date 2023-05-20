@@ -39,6 +39,7 @@ exp:
         digit_kwargs: 
           int_decimals: 12
           frac_decimals: 12
+          scale: true
         order_kwargs: 
           # scale_exp: 13
         sinusoidal_kwargs: 
@@ -48,7 +49,7 @@ exp:
           # low: 0
           # high: 10000
           # dim: 10
-        concate: true
+        concat: true
       aux_kwargs:
         log_aux: true
         concat: true

@@ -97,13 +97,17 @@ def func_encoder(
     return encoding
 
 
-def digit_encoder(x, int_decimals=12, frac_decimals=12):
+def digit_encoder(x, int_decimals=12, frac_decimals=12, scale=True):
     # precision of x affects precision of encoding
     def digits_from_pos_ints(n, decimals):
         decimals = torch.pow(10, torch.arange(decimals - 1, -1, -1))
         decimals = decimals.expand(*n.shape, len(decimals))
+
         digits = n.unsqueeze(-1) / decimals
-        digits = torch.floor(torch.fmod(digits, 10)) / 10  # scale digits from 0 to 1
+        digits = torch.floor(torch.fmod(digits, 10))
+
+        if scale:
+            digits /= 10  # scale digits from 0 to 1
         return digits
 
     frac, intgr = np.modf(torch.abs(x).cpu())
@@ -119,6 +123,24 @@ def digit_encoder(x, int_decimals=12, frac_decimals=12):
     sign = torch.sign(x).unsqueeze(-1)
     encoding = torch.cat((sign, int_digits.to(x.device), frac_digits.to(x.device)), -1)
     return encoding
+
+
+def digit_decoder(encoding, int_decimals=12, scaled=True, with_sign=True):
+    encoding = torch.atleast_2d(encoding)
+    digit_start_pos = 1 if with_sign else 0
+
+    assert encoding.shape[-1] >= int_decimals + digit_start_pos
+
+    frac_decimals = encoding.shape[-1] - int_decimals - digit_start_pos
+    if scaled:
+        encoding[..., digit_start_pos:] *= 10
+
+    decimals = torch.pow(10.0, torch.arange(int_decimals - 1, -frac_decimals - 1, -1))
+    decoding = (encoding[..., digit_start_pos:] * decimals).sum(dim=-1)
+    if with_sign:
+        decoding *= encoding[..., 0]
+
+    return decoding
 
 
 def order_encoder(x, scale_exp=13):
@@ -161,7 +183,7 @@ def dice_encoder(x, low=0, high=1000, dim=10, Q=None, random_state=42):
 
 def encode_nums(
     nums,
-    digit_kwargs=dict(int_decimals=12, frac_decimals=12),
+    digit_kwargs=dict(int_decimals=12, frac_decimals=12, scale=True),
     order_kwargs=dict(scale_exp=13),
     sinusoidal_kwargs=dict(scale_base=10000, exp_divisor=50),
     dice_kwargs=dict(low=0, high=1000, dim=10, Q=None, random_state=42),

@@ -91,7 +91,7 @@ def gen_reconstruct_set(
 def gen_arith_op_set(
     number_range=(-2000, 2000),
     interp_range=(-500, 500),
-    ops=("add", "sub", "abs_diff", "mul", "div", "max"),
+    ops=("add", "sub", "abs_diff", "mul", "div", "max", "argmax"),
     as_int=True,
     num_floats=None,
     train_size=0.6,
@@ -99,7 +99,7 @@ def gen_arith_op_set(
     random_state=42,
     dataloader_kwargs=DATALOADER_KWARGS,
 ):
-    r"""Sythetic geneation of two numbers and their result from arithmetic operations"""
+    r"""Sythetic generation of two numbers and their result from arithmetic operations"""
 
     train_data, val_data, test_data = None, None, None
     rng = np.random.default_rng(random_state)
@@ -136,6 +136,7 @@ def gen_arith_op_set(
         "mul": (lambda x, y: x * y),
         "div": (lambda x, y: x / y),
         "max": (lambda x, y: np.maximum(x, y)),
+        "argmax": (lambda x, y: np.vstack((x, y)).T.argmax(axis=1)),
     }
 
     data = {"train": train_data, "val": val_data, "test": test_data}

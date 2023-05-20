@@ -1,6 +1,8 @@
 import torch
 from torch import nn
 
+from .embedder_utils import digit_encoder, digit_decoder
+
 
 def create_fcn(
     in_size,
@@ -38,6 +40,9 @@ def create_fc_task_nets(
         non_linearity="ReLU",
     ),
 ):
+    # task heads as module list to loop through to convert:
+    # BxF -> BxHxF
+    # B: Batch, H: Head, F: Feature
 
     fc_task_nets = nn.ModuleList()
     for i in range(num_tasks):
@@ -59,3 +64,71 @@ def create_fc_task_nets(
         fc_task_nets.append(task_net)
 
     return fc_task_nets
+
+
+def digit_loss(inp, target, int_decimals=12):
+    r"""inp: BxCxP or Bx(CxP), target: B or BxP
+    B: Batch, P: Position of Digit, C: Class of digit
+    P >= int_decimals, C in 0-9"""
+
+    inp = torch.atleast_2d(inp)
+    target = torch.atleast_1d(target)
+
+    if len(inp.shape) == 2:
+        # Bx(CxP) -> BxCxP
+        inp = inp.view(inp.shape[0], 10, -1)
+
+    assert inp.shape[-1] >= int_decimals
+
+    if len(target.shape) == 1:
+        frac_decimals = inp.shape[-1] - int_decimals
+        # target: B -> BxP
+        target = digit_encoder(target, int_decimals, frac_decimals, scale=False)
+        # remove polarity info, convert to long
+        target = target[..., 1:].to(torch.long)
+
+    loss = nn.functional.cross_entropy(inp, target)
+    return loss
+
+
+def polarity_loss(inp, target):
+    r"""inp: B, target: B, target is either nums or torch.sign(nums)"""
+    polarity = (target >= 0).to(inp)
+    loss = nn.functional.binary_cross_entropy_with_logits(inp, polarity)
+    return loss
+
+
+def digit_polarity_loss(inp, target, int_decimals=12):
+    r"""inp: Bx(1+CxP), target: B or Bx(1+P)
+    first entry (1) is for polarity, P >= int_decimals, C in 0-9"""
+
+    inp = torch.atleast_2d(inp)
+    target = torch.atleast_1d(target)
+
+    digit_target = polarity_target = target
+    if len(target.shape) == 2:
+        digit_target = target[:, 1:]
+        polarity_target = target[:, 0]
+
+    loss = digit_loss(inp[:, 1:], digit_target, int_decimals)
+    loss += polarity_loss(inp[:, 0], polarity_target)
+    return loss
+
+
+def digit_polarity_decoder(inp, int_decimals=12, normalized=False):
+    r"""inp: Bx(1+CxP)
+    first entry (1) is for polarity, P >= int_decimals, C in 0-9"""
+
+    inp = torch.atleast_2d(inp)
+
+    sign_thresh = 0.5 if normalized else 0
+    sign = inp[:, 0] >= sign_thresh
+    sign = 2 * sign - 1  # convert 0 1 to sign i.e. -1 1
+
+    # Bx(1+CxP) -> BxCxP
+    digits = inp[:, 1:].view(inp.shape[0], 10, -1)
+    digits = digits.argmax(dim=1)  # digit from max value at digit pos
+
+    decoding = digit_decoder(digits, int_decimals, scaled=False, with_sign=False)
+    decoding *= sign
+    return decoding
