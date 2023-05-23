@@ -32,10 +32,8 @@ class LitModel(pl.LightningModule):
         self.scheduler_kwargs = scheduler_kwargs
         self.scheduler_config = scheduler_config
 
-
     def forward(self, batch):
         return self.neural_net(batch)
-
 
     def training_step(self, batch, batch_idx):
         loss = self.loss_func(self(batch[0]), batch[1])

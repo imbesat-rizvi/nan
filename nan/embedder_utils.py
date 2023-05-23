@@ -143,6 +143,24 @@ def digit_decoder(encoding, int_decimals=12, scaled=True, with_sign=True):
     return decoding
 
 
+def scientific_notation_encoder(x, decimals=7, scale_mantissa=True):
+    exp = torch.log10(torch.abs(x)).floor().unsqueeze(dim=-1)
+    mantissa = (x.view(exp.shape) / torch.pow(10.0, exp)).round(decimals=decimals)
+
+    if scale_mantissa:
+        mantissa /= 10
+        exp += 1
+
+    encoding = torch.cat((mantissa, exp), dim=-1)
+    return encoding
+
+
+def scientific_notation_decoder(encoding):
+    # mantissa x (10 ^ exp)
+    decoding = encoding[..., 0] * torch.pow(10, encoding[..., 1])
+    return decoding
+
+
 def order_encoder(x, scale_exp=13):
     return func_encoder(x, func=arctan_func, scale_exp=scale_exp)
     # return scaled_range_func(x, scale_exp=scale_exp)

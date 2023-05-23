@@ -19,7 +19,7 @@ exp:
       # - -500
       # - 500
     as_int: true
-    ops:
+    ops: &o
       - add
       # - mul
       # - argmax
@@ -34,7 +34,13 @@ exp:
   neural_net_args:
     emb_name: NANEmbedder
     emb_kwargs:
-      emb_net:
+      emb_net: fcn
+      emb_kwargs:
+        # prefer 1 layered linear projection to underlying model embedding size
+        output_size: 768
+        num_layers: 1
+        dropout: 0.2 # immaterial for 1-layer linear net
+        non_linearity: ReLU # immaterial for 1-layer linear net
       nums_kwargs:
         digit_kwargs: 
           int_decimals: 12
@@ -55,10 +61,7 @@ exp:
         concat: true
       use_aux: false
       random_state: 42
-    ops:
-      - add
-      # - mul
-      # - argmax
+    ops: *o
     model_type: classifier
     output_sizes: 20 # immaterial for model_type regressor; 1 for sign, 12 int_decimals, 7 frac_decimals
     ops_kwargs:

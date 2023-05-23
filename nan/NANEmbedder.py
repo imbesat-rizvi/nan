@@ -12,7 +12,7 @@ class NANEmbedder(torch.nn.Module):
         emb_net="fcn",
         emb_kwargs=dict(
             output_size=768,  # emb size of the upstream model e.g. BERT
-            num_layers=3,
+            num_layers=1,
             dropout=0.2,
             non_linearity="ReLU",
         ),
