@@ -1,7 +1,12 @@
 import torch
 from torch import nn
+from functools import partial
 
-from nan.model_utils import create_fc_task_nets, digit_polarity_loss
+from nan.model_utils import (
+    create_fc_task_nets,
+    digit_polarity_loss,
+    scientific_notation_loss,
+)
 
 from .probe_utils import get_embedder
 from .. import LitModel
@@ -20,9 +25,11 @@ class ArithmeticOperator(nn.Module):
         ),
         ops=("add", "sub", "abs_diff", "mul", "div", "max", "argmax"),
         model_type="classifier",
-        # output_sizes specified for classifier only as regressor output_sizes will be 1
+        # output_sizes specified for classifier or scientific notation only
+        # as regressor output_sizes will be 1
         # output_sizes will be the size of numbers to be predicted
-        # e.g. 1 for polarity + 12 for int_decimals + 7 for frac_decimals
+        # e.g. for classifier: 1 for polarity + 12 for int_decimals + 7 for frac_decimals
+        # or for scientific notation: 1 for mantissa and +12 to -7 i.e. 19 for exponent
         output_sizes=20,
         ops_kwargs=dict(
             num_layers=2,
@@ -35,7 +42,7 @@ class ArithmeticOperator(nn.Module):
 
         super().__init__()
 
-        assert model_type in ("classifier", "regressor")
+        assert model_type in ("classifier", "regressor", "scientific_notation")
         self.model_type = model_type
 
         self.embedder = get_embedder(emb_name, emb_kwargs)
@@ -50,10 +57,14 @@ class ArithmeticOperator(nn.Module):
         for op in ops:
             if model_type == "regressor" or op == "argmax":
                 task_out_sizes = 1
-            else:
+            elif model_type == "classifier":
                 # number prediction, output_sizes-1 times digit probas
                 # and 1 time sign proba
                 task_out_sizes = (output_sizes - 1) * 10 + 1
+            else:
+                # scientific notation prediction, 1 for mantissa
+                # output_sizes - 1 for exponent
+                task_out_sizes = output_sizes
 
             self.ops_heads[op] = create_fc_task_nets(
                 in_size=2 * emb_size,
@@ -69,12 +80,24 @@ class ArithmeticOperator(nn.Module):
 
 
 class LitArithmeticOperator(LitModel):
-    def __init__(self, neural_net, task_weights=1, **kwargs):
+    def __init__(
+        self,
+        neural_net,
+        task_weights=1,
+        int_decimals=12,
+        exp_ub=12,
+        **kwargs,
+    ):
         super().__init__(neural_net, **kwargs)
 
         if not isinstance(task_weights, int):
             assert len(task_weights) == len(self.neural_net.ops_heads)
         self.task_weights = task_weights
+
+        self.digit_polarity_loss = partial(
+            digit_polarity_loss, int_decimals=int_decimals
+        )
+        self.scientific_notation_loss = partial(scientific_notation_loss, exp_ub=exp_ub)
         self.loss_func = self.ops_loss
 
     def ops_loss(self, y_pred, y):
@@ -89,9 +112,12 @@ class LitArithmeticOperator(LitModel):
             elif self.neural_net.model_type == "regressor":
                 output = y_pred[op].squeeze()
                 loss_func = nn.functional.mse_loss
+            elif self.neural_net.model_type == "classifier":
+                output = y_pred[op]
+                loss_func = self.digit_polarity_loss
             else:
                 output = y_pred[op]
-                loss_func = digit_polarity_loss
+                loss_func = self.scientific_notation_loss
 
             weight = 1
             if isinstance(self.task_weights, dict):

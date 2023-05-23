@@ -72,6 +72,8 @@ exp:
 
   model_args:
     task_weights: 1
+    int_decimals: 12
+    exp_ub: 12
     optimizer_name: AdamW
     optimizer_kwargs:
       lr: 1.0e-3
