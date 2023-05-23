@@ -1,0 +1,95 @@
+# neptune:
+#   workspace: imbesat-rizvi
+#   project-name: Arithmetic-Operations-Probing-NaN
+#   run-name: Only-encoding
+#   tags:
+#     - arithmetic-operations
+#     - numeric-encoding
+#     - numeracy-probing
+#     - without-LM
+
+exp:
+  name: arithmetic_operations
+  
+  data_args:
+    number_range:
+      - 0
+      - 10000
+    interp_range:
+      # - -500
+      # - 500
+    as_int: true
+    ops:
+      - add
+      # - mul
+      # - argmax
+    train_size: 0.6
+    test_size: 0.2
+    random_state: 42
+    dataloader_kwargs:
+      batch_size: 64
+      shuffle: false
+      num_workers: 1
+
+  neural_net_args:
+    emb_name: NANEmbedder
+    emb_kwargs:
+      emb_net:
+      nums_kwargs:
+        digit_kwargs: 
+          int_decimals: 12
+          frac_decimals: 7
+          scale: true
+        order_kwargs: 
+          # scale_exp: 13
+        sinusoidal_kwargs: 
+          # scale_base: 10000
+          # exp_divisor: 50
+        dice_kwargs:
+          # low: 0
+          # high: 10000
+          # dim: 10
+        concat: true
+      aux_kwargs:
+        log_aux: true
+        concat: true
+      use_aux: false
+      random_state: 42
+    ops:
+      - add
+      # - mul
+      # - argmax
+    model_type: classifier
+    output_sizes: 20 # immaterial for model_type regressor; 1 for sign, 12 int_decimals, 7 frac_decimals
+    ops_kwargs:
+      num_layers: 3
+      hidden_size: 256 # immaterial for 1-layer linear net
+      dropout: 0.2 # immaterial for 1-layer linear net
+      non_linearity: ReLU # immaterial for 1-layer linear net
+
+  model_args:
+    task_weights: 1
+    optimizer_name: AdamW
+    optimizer_kwargs:
+      lr: 1.0e-3
+    scheduler_name: ReduceLROnPlateau
+    scheduler_kwargs:
+      patience: 5
+    scheduler_config:
+      monitor: val_loss
+      mode: min
+      frequency: 1
+
+  trainer_args:
+    default_root_dir: outputs/probing/arithmetic_operations
+    max_epochs: 1000
+  
+  trainer_callbacks:
+    EarlyStopping:
+      monitor: val_loss
+      min_delta: 1.0e-6
+      patience: 7
+      mode: min
+
+  plot_args:
+    save_path: outputs/probing/arithmetic_operations

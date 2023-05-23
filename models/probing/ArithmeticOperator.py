@@ -1,7 +1,7 @@
 import torch
 from torch import nn
 
-from nan.model_utils import create_fc_task_nets
+from nan.model_utils import create_fc_task_nets, digit_polarity_loss
 
 from .probe_utils import get_embedder
 from .. import LitModel
@@ -12,7 +12,12 @@ class ArithmeticOperator(nn.Module):
         self,
         emb_name="encoding",
         emb_kwargs=dict(use_aux=True, nums={}, aux={}),
-        num_ops=1,
+        ops=("add", "sub", "abs_diff", "mul", "div", "max", "argmax"),
+        model_type="classifier",
+        # output_sizes specified for classifier only as regressor output_sizes will be 1
+        # output_sizes will be the size of numbers to be predicted
+        # e.g. 1 for polarity + 12 for int_decimals + 7 for frac_decimals
+        output_sizes=20,
         ops_kwargs=dict(
             num_layers=2,
             hidden_size=64,
@@ -23,6 +28,10 @@ class ArithmeticOperator(nn.Module):
         r"""Arithmetic Operator for 2 numbers"""
 
         super().__init__()
+        
+        assert model_type in ("classifier", "regressor")
+        self.model_type = model_type
+        
         self.embedder = get_embedder(emb_name, emb_kwargs)
 
         if hasattr(self.embedder, "hidden_size"):
@@ -30,17 +39,28 @@ class ArithmeticOperator(nn.Module):
         else:
             emb_size = self.embedder(torch.tensor([0])).shape[-1]
 
-        self.ops_heads = create_fc_task_nets(
-            in_size=2 * emb_size,
-            num_tasks=num_ops,
-            task_out_sizes=1,
-            head_kwargs=ops_kwargs,
-        )
+        
+        self.ops = ops
+        self.ops_heads = nn.ModuleDict()
+        for op in ops:
+            if model_type == "regressor" or op == "argmax":
+                task_out_sizes = 1
+            else:
+                # number prediction, output_sizes-1 times digit probas 
+                # and 1 time sign proba
+                task_out_sizes = (output_sizes - 1) * 10 + 1
+            
+            self.ops_heads[op] = create_fc_task_nets(
+                in_size=2 * emb_size,
+                num_tasks=1,
+                task_out_sizes=task_out_sizes,
+                head_kwargs=ops_kwargs,
+            )
+
 
     def forward(self, x):
         x = torch.cat((self.embedder(x[:, 0]), self.embedder(x[:, 1])), axis=-1)
-        out = [op_head(x).flatten() for op_head in self.ops_heads]
-        out = torch.vstack(out).T
+        out = {op: op_head(x) for op, op_head in self.ops_heads.items()}
         return out
 
 
@@ -50,16 +70,28 @@ class LitArithmeticOperator(LitModel):
 
         if not isinstance(task_weights, int):
             assert len(task_weights) == len(self.neural_net.ops_heads)
-            task_weights = torch.tensor(task_weights)
-
         self.task_weights = task_weights
         self.loss_func = self.ops_loss
 
     def ops_loss(self, y_pred, y):
-        if y.shape != y_pred.shape:
-            y = y.reshape(y_pred.shape)
+        loss = 0
+        y = torch.atleast_2d(y)
+        
+        for i, op in enumerate(self.neural_net.ops):
+        
+            if op == "argmax":
+                output = y_pred[op].squeeze()
+                loss_func = nn.functional.binary_cross_entropy_with_logits
+            elif self.neural_net.model_type == "regressor":
+                output = y_pred[op].squeeze()
+                loss_func = nn.functional.mse_loss
+            else:
+                output = y_pred[op]
+                loss_func = digit_polarity_loss
+            
+            weight = 1
+            if isinstance(self.task_weights, dict):
+                weight = self.task_weights.get(op, 1)
+            loss += weight * loss_func(output, y[:,i])
 
-        task_mse = nn.functional.mse_loss(y_pred, y, reduction="none").mean(axis=0)
-        weighted_mse = torch.sum(self.task_weights * task_mse)
-
-        return weighted_mse
+        return loss

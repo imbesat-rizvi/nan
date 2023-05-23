@@ -44,7 +44,7 @@ def create_fc_task_nets(
     # BxF -> BxHxF
     # B: Batch, H: Head, F: Feature
 
-    fc_task_nets = nn.ModuleList()
+    fc_task_nets = []
     for i in range(num_tasks):
 
         fcn_kwargs = head_kwargs
@@ -63,6 +63,7 @@ def create_fc_task_nets(
 
         fc_task_nets.append(task_net)
 
+    fc_task_nets = fc_task_nets[0] if num_tasks==1 else nn.ModuleList(fc_task_nets)
     return fc_task_nets
 
 

@@ -97,7 +97,7 @@ def func_encoder(
     return encoding
 
 
-def digit_encoder(x, int_decimals=12, frac_decimals=12, scale=True):
+def digit_encoder(x, int_decimals=12, frac_decimals=7, scale=True):
     # precision of x affects precision of encoding
     def digits_from_pos_ints(n, decimals):
         decimals = torch.pow(10, torch.arange(decimals - 1, -1, -1))
@@ -183,7 +183,7 @@ def dice_encoder(x, low=0, high=1000, dim=10, Q=None, random_state=42):
 
 def encode_nums(
     nums,
-    digit_kwargs=dict(int_decimals=12, frac_decimals=12, scale=True),
+    digit_kwargs=dict(int_decimals=12, frac_decimals=7, scale=True),
     order_kwargs=dict(scale_exp=13),
     sinusoidal_kwargs=dict(scale_base=10000, exp_divisor=50),
     dice_kwargs=dict(low=0, high=1000, dim=10, Q=None, random_state=42),
