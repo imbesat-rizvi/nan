@@ -6,6 +6,8 @@ from nan.model_utils import (
     create_fc_task_nets,
     digit_polarity_loss,
     scientific_notation_loss,
+    decode_digit_polarity_output,
+    decode_scientific_notation_output,
 )
 
 from .probe_utils import get_embedder
@@ -83,6 +85,7 @@ class LitArithmeticOperator(LitModel):
     def __init__(
         self,
         neural_net,
+        target_names=("add", "sub", "abs_diff", "mul", "div", "max", "argmax"),
         task_weights=1,
         int_decimals=12,
         exp_ub=12,
@@ -97,8 +100,18 @@ class LitArithmeticOperator(LitModel):
         self.digit_polarity_loss = partial(
             digit_polarity_loss, int_decimals=int_decimals
         )
+
+        self.digit_polarity_decoder = partial(
+            decode_digit_polarity_output, int_decimals=int_decimals
+        )
+
         self.scientific_notation_loss = partial(scientific_notation_loss, exp_ub=exp_ub)
+        self.scientific_notation_decoder = partial(
+            decode_scientific_notation_output, exp_ub=exp_ub
+        )
+
         self.loss_func = self.ops_loss
+        self.output_decoder = self._output_decoder
 
     def ops_loss(self, y_pred, y):
         loss = 0
@@ -106,17 +119,16 @@ class LitArithmeticOperator(LitModel):
 
         for i, op in enumerate(self.neural_net.ops):
 
+            output = y_pred[op]
             if op == "argmax":
-                output = y_pred[op].squeeze()
+                output = output.squeeze()
                 loss_func = nn.functional.binary_cross_entropy_with_logits
             elif self.neural_net.model_type == "regressor":
-                output = y_pred[op].squeeze()
+                output = output.squeeze()
                 loss_func = nn.functional.mse_loss
             elif self.neural_net.model_type == "classifier":
-                output = y_pred[op]
                 loss_func = self.digit_polarity_loss
             else:
-                output = y_pred[op]
                 loss_func = self.scientific_notation_loss
 
             weight = 1
@@ -125,3 +137,19 @@ class LitArithmeticOperator(LitModel):
             loss += weight * loss_func(output, y[:, i])
 
         return loss
+
+    def _output_decoder(self, output):
+        decoding = []
+        for i, op in enumerate(self.neural_net.ops):
+
+            if op == "argmax":
+                pass  # TODO
+            elif self.neural_net.model_type == "regressor":
+                pass  # TODO
+            elif self.neural_net.model_type == "classifier":
+                decoding.append(self.digit_polarity_decoder(output[op]).ravel())
+            else:
+                pass  # TODO
+
+        decoding = torch.hstack(decoding)
+        return decoding

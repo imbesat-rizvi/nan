@@ -2,6 +2,10 @@ import os
 import yaml
 from pathlib import Path
 from argparse import ArgumentParser
+import torch
+import torch.utils.data as torch_dataset
+from datasets import Dataset
+import pandas as pd
 
 # import neptune # when neptune is installed
 import neptune.new as neptune  # when neptune-client is installed
@@ -14,18 +18,26 @@ except ModuleNotFoundError:
 
 
 from data.probing import gen_reconstruct_set, gen_arith_op_set
+from data.utils import get_data_from_LitData
 from models.probing import (
     Reconstructor,
     LitReconstructor,
     ArithmeticOperator,
     LitArithmeticOperator,
 )
+
+from models.numerical_reasoning import (
+    EncoderNRModel,
+    LitEncoderNRModel,
+)
+
 from models.probing.plot_utils import plot_reconstruction
 
 
 EXP_DATA = dict(
     reconstruction=gen_reconstruct_set,
     arithmetic_operations=gen_arith_op_set,
+    numerical_reasoning=get_data_from_LitData,
 )
 
 EXP_MODELS = dict(
@@ -33,7 +45,50 @@ EXP_MODELS = dict(
     arithmetic_operations=dict(
         neural_net=ArithmeticOperator, model=LitArithmeticOperator
     ),
+    numerical_reasoning=dict(neural_net=EncoderNRModel, model=LitEncoderNRModel),
 )
+
+
+def save_predictions_and_target(
+    predictions,
+    target_or_dataset=None,
+    target_cols="labels",
+    file_prefix="test",
+    save_path="predictions_and_target.csv",
+):
+
+    if isinstance(target_cols, str):
+        target_cols = [target_cols]
+
+    target = target_or_dataset
+
+    if isinstance(target_or_dataset, torch_dataset.DataLoader):
+        target_or_dataset = target_or_dataset.dataset
+
+    if isinstance(target_or_dataset, Dataset):
+        target = target_or_dataset.remove_columns(
+            [c for c in target_or_dataset.column_names if c not in target_cols]
+        )
+        target.set_format("numpy")
+        target = pd.DataFrame(target)
+
+    elif isinstance(target_or_dataset, torch_dataset.Dataset):
+        # Usually 1st entry is model input and 2nd entry is target
+        target = torch.cat([torch.atleast_1d(i[1]) for i in target_or_dataset])
+        target = pd.DataFrame(target, columns=target_cols)
+
+    if isinstance(predictions, list) and isinstance(predictions[0], torch.Tensor):
+        predictions = torch.cat(predictions)
+
+    data_to_save = pd.DataFrame(predictions, columns=[f"{i}_pred" for i in target_cols])
+    if target is not None:
+        data_to_save = pd.concat((data_to_save, target), axis=1)
+
+    save_path = Path(save_path)
+    save_path.parent.mkdir(parents=True, exist_ok=True)
+    save_path = save_path.parent / f"{file_prefix}-{save_path.name}"
+    data_to_save.to_csv(save_path, index=False)
+    return save_path
 
 
 def main(exp_config, exp_data=EXP_DATA, exp_models=EXP_MODELS, run=None):
@@ -73,13 +128,35 @@ def main(exp_config, exp_data=EXP_DATA, exp_models=EXP_MODELS, run=None):
     trainer.test(dataloaders=val_data)
     trainer.test(dataloaders=test_data)
 
-    import pdb; pdb.set_trace()
     train_pred = trainer.predict(dataloaders=train_data)
     val_pred = trainer.predict(dataloaders=val_data)
     test_pred = trainer.predict(dataloaders=test_data)
 
+    # import pdb; pdb.set_trace()
+
+    if exp_config.get("result_args", {}).get("predictions"):
+        pred_target_pairs = {
+            "train": (train_pred, train_data),
+            "val": (val_pred, val_data),
+            "test": (test_pred, test_data),
+        }
+
+        for split, (pred, target) in pred_target_pairs.items():
+            save_path = save_predictions_and_target(
+                predictions=pred,
+                target_or_dataset=target,
+                file_prefix=split,
+                **exp_config["result_args"]["predictions"],
+            )
+
+            if run is not None:
+                run[f"reference/{save_path.name}"].upload(str(save_path))
+
     if exp_config["name"] == "reconstruction":
-        save_path = Path(exp_config["plot_args"]["save_path"]) / "reconstruction.jpg"
+        save_path = (
+            Path(exp_config["result_args"]["plot_args"]["save_path"])
+            / "reconstruction.jpg"
+        )
 
         plot_reconstruction(
             x=(train_data, val_data, test_data),

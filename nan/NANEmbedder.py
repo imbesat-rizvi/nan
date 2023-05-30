@@ -16,9 +16,11 @@ class NANEmbedder(torch.nn.Module):
             dropout=0.2,
             non_linearity="ReLU",
         ),
-        nums_kwargs={},  # default encode_nums kwargs
+        nums_kwargs=dict(
+            digit_kwargs=dict(int_decimals=12, frac_decimals=7, scale=True)
+        ),
         aux_kwargs={},  # default encode_aux kwargs
-        use_aux="also",
+        use_aux=False,
         random_state=42,
     ):
 

@@ -1,5 +1,7 @@
 from sklearn.model_selection import train_test_split
 
+from .LitData import LitData
+
 
 def train_val_test_split(
     data,
@@ -27,3 +29,9 @@ def train_val_test_split(
     )
 
     return train_set, val_set, test_set
+
+
+def get_data_from_LitData(**kwargs):
+    # refer definition of LitData class for details on kwargs
+    d = LitData(**kwargs)
+    return d.train_dataloader(), d.val_dataloader(), d.test_dataloader()

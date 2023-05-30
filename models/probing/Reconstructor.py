@@ -13,8 +13,14 @@ LitReconstructor = LitModel
 class Reconstructor(nn.Module):
     def __init__(
         self,
-        emb_name="encoding",
-        emb_kwargs=dict(use_aux=True, nums={}, aux={}),
+        emb_name="NANEmbedder",
+        emb_kwargs=dict(
+            emb_net=None,
+            nums_kwargs={},
+            aux_kwargs={},
+            use_aux="also",
+            random_state=42,
+        ),
         num_layers=2,
         hidden_size=64,
         dropout=0.2,

@@ -1,12 +1,12 @@
-# neptune:
-#   workspace: imbesat-rizvi
-#   project-name: Reconstruction-Probing-NaN
-#   run-name: Only-encoding
-#   tags:
-#     - reconstruction
-#     - numeric-encoding
-#     - numeracy-probing
-#     - without-LM
+neptune:
+  workspace: imbesat-rizvi
+  project-name: Reconstruction-Probing-NAN
+  run-name: encoding+nanembedder
+  tags:
+    - reconstruction
+    - numeric-encoding
+    - numeracy-probing
+    - without-LM
 
 exp:
   name: reconstruction
@@ -24,11 +24,11 @@ exp:
     random_state: 42
     dataloader_kwargs:
       batch_size: 64
-      shuffle: false
+      shuffle: false # leave as false for comparison with prediction
       num_workers: 1
 
   neural_net_args:
-    emb_name: encoding
+    emb_name: NANEmbedder
     emb_kwargs:
       emb_net:
       nums_kwargs:
@@ -49,9 +49,9 @@ exp:
       aux_kwargs:
         log_aux: true
         concat: true
-      use_aux: only
+      use_aux: false
       random_state: 42
-    num_layers: 2
+    num_layers: 3
     hidden_size: 256 # immaterial for 1-layer linear net
     dropout: 0.2 # immaterial for 1-layer linear net
     non_linearity: ReLU # immaterial for 1-layer linear net
@@ -79,5 +79,9 @@ exp:
       patience: 7
       mode: min
 
-  plot_args:
-    save_path: outputs/probing/reconstruction
+  result_args:
+    predictions:
+      target_cols: number
+      save_path: outputs/probing/reconstruction/predictions_and_target.csv
+    plot_args:
+      save_path: outputs/probing/reconstruction

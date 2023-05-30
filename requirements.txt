@@ -1,5 +1,8 @@
 numpy==1.23.4
 torch==1.12.1
+transformers==4.24.0
+datasets==2.7.1
+pandas==2.0.1
 seaborn==0.12.2
 neptune-client==1.1.1
 lightning==2.0.0

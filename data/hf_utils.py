@@ -7,8 +7,7 @@ NUM_PAT = re.compile(r"([-+])?\d+(\.\d+)?")
 
 FILTERS = dict(
     # TODO: support exponentials
-    is_number=lambda x: re.fullmatch(NUM_PAT, x)
-    is not None,
+    is_number=lambda x: (re.fullmatch(NUM_PAT, x) is not None),
 )
 
 TRANSFORMS = dict(
@@ -73,7 +72,7 @@ def check_and_resplit(dataset, test_split="validation", test_size=0.1, seed=42):
 
 
 def get_processed_dataset(
-    path="allenai/lila",
+    dataset_path="allenai/lila",
     name="GSM8k_structured",
     split=None,
     filter_kwargs=dict(col_filter=dict(output_answer="is_number")),
@@ -81,7 +80,7 @@ def get_processed_dataset(
     resplit_kwargs=dict(test_split="validation", test_size=0.1, seed=42),
 ):
 
-    dataset = get_dataset(path, name=name, split=split)
+    dataset = get_dataset(dataset_path, name=name, split=split)
     dataset = filter_dataset(dataset, **filter_kwargs)
     dataset = transform_dataset(dataset, **transform_kwargs)
     dataset = check_and_resplit(dataset, **resplit_kwargs)

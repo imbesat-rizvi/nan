@@ -1,39 +1,43 @@
 neptune:
   workspace: imbesat-rizvi
-  project-name: Arithmetic-Operations-Probing-NAN
-  run-name: encoding+nanembedder
+  project-name: GSM8k-NAN
+  run-name: GSM8k-NAN
   tags:
-    - arithmetic-operations
+    - word-problems
     - numeric-encoding
-    - numeracy-probing
-    - without-LM
 
 exp:
-  name: arithmetic_operations
+  name: numerical_reasoning
   
   data_args:
-    number_range:
-      - 0
-      - 10000
-    interp_range:
-      # - -500
-      # - 500
-    as_int: true
-    ops: &o
-      - add
-      # - mul
-      # - argmax
-    train_size: 0.6
-    test_size: 0.2
-    random_state: 42
+    dataset_path: allenai/lila
+    name: GSM8k_structured
+    split: # None i.e. by default all
+    filter_kwargs: 
+      col_filter: 
+        output_answer: is_number
+    transform_kwargs:
+      col_transform: 
+        output_answer: to_number
+    resplit_kwargs:
+      test_split: validation
+      test_size: 0.1
+      seed: 42
+    tokenizer_model: bert-base-uncased
+    tokenizer_wrapper: NANTokenizer
+    text_col: input
+    out_cols: &oc
+      - output_answer
+    prune_cols: true
     dataloader_kwargs:
       batch_size: 64
       shuffle: false # leave as false for comparison with prediction
-      num_workers: 1
+      num_workers: 2
 
   neural_net_args:
-    emb_name: NANEmbedder
-    emb_kwargs:
+    net: bert-base-uncased
+    embedder: NANEmbedder
+    embedder_kwargs:
       emb_net: fcn
       emb_kwargs:
         # prefer 1 layered linear projection to underlying model embedding size
@@ -61,45 +65,43 @@ exp:
         concat: true
       use_aux: false
       random_state: 42
-    ops: *o
-    model_type: classifier
+    head_type: classifier
     output_sizes: 20 # immaterial for model_type regressor; 1 for sign, 12 int_decimals, 7 frac_decimals
-    ops_kwargs:
+    head_kwargs:
       num_layers: 3
       hidden_size: 256 # immaterial for 1-layer linear net
       dropout: 0.2 # immaterial for 1-layer linear net
       non_linearity: ReLU # immaterial for 1-layer linear net
 
   model_args:
-    task_weights: 1
     int_decimals: 12
     exp_ub: 12
-    target_names: *o
+    target_names: *oc
     optimizer_name: AdamW
     optimizer_kwargs:
-      lr: 1.0e-3
+      lr: 1.0e-5
     scheduler_name: ReduceLROnPlateau
     scheduler_kwargs:
-      patience: 5
+      patience: 10
     scheduler_config:
       monitor: val_loss
       mode: min
       frequency: 1
 
   trainer_args:
-    default_root_dir: outputs/probing/arithmetic_operations
-    max_epochs: 1000
+    default_root_dir: outputs/nr/gsm8k
+    max_epochs: 100
   
   trainer_callbacks:
     EarlyStopping:
       monitor: val_loss
       min_delta: 1.0e-6
-      patience: 7
+      patience: 10
       mode: min
 
   result_args:
     predictions:
-      target_cols: *o
-      save_path: outputs/probing/arithmetic_operations/predictions_and_target.csv
+      target_cols: *oc
+      save_path: outputs/nr/gsm8k/predictions_and_target.csv
     plot_args:
-      save_path: outputs/probing/arithmetic_operations
+      save_path: outputs/nr/gsm8k
