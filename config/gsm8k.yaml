@@ -30,7 +30,7 @@ exp:
       - output_answer
     prune_cols: true
     dataloader_kwargs:
-      batch_size: 64
+      batch_size: 16
       shuffle: false # leave as false for comparison with prediction
       num_workers: 2
 

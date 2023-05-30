@@ -136,6 +136,7 @@ def digit_decoder(encoding, int_decimals=12, scaled=True, with_sign=True):
         encoding[..., digit_start_pos:] *= 10
 
     decimals = torch.pow(10.0, torch.arange(int_decimals - 1, -frac_decimals - 1, -1))
+    decimals = decimals.to(encoding.device)
     decoding = (encoding[..., digit_start_pos:] * decimals).sum(dim=-1)
     if with_sign:
         decoding *= encoding[..., 0]
